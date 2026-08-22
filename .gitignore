@@ -1,0 +1,45 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Model weights (large files — keep locally)
+models/*.pt
+models/*.pth
+
+# Training data (large PGN files)
+data/*.pgn
+data/*.pgn.bz2
+data/*.pgn.gz
+
+# Training history
+models/history.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
+*.sqlite
+
+# Logs
+*.log

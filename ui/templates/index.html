@@ -1,0 +1,356 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chess Engine</title>
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"/>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#1a1a2e;color:#eee;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+    h1{font-size:1.9rem;font-weight:700;margin-bottom:2px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .subtitle{font-size:.82rem;color:#777;margin-bottom:20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+    .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+    .pill-nn{background:#7c3aed;color:#fff}
+    .pill-hc{background:#1e40af;color:#fff}
+    .pill-book{background:#065f46;color:#6ee7b7}
+
+    /* Layout */
+    .layout{display:flex;gap:24px;align-items:flex-start;width:100%;max-width:920px}
+    #board-wrap{flex-shrink:0}
+    #board{width:480px}
+
+    /* Panel */
+    .panel{flex:1;display:flex;flex-direction:column;gap:14px;min-width:210px}
+    .card{background:#16213e;border:1px solid #0f3460;border-radius:12px;padding:14px}
+    .card h3{font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:#60a5fa;margin-bottom:10px}
+
+    /* Status */
+    #status-text{font-size:.95rem;font-weight:600;color:#a78bfa}
+    #thinking{display:none;font-size:.8rem;color:#60a5fa;margin-top:5px}
+    .spinner{display:inline-block;width:11px;height:11px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #result-banner{display:none;font-size:1rem;font-weight:700;padding:8px;border-radius:8px;text-align:center;margin-top:8px}
+
+    /* Eval bar */
+    .eval-wrap{display:flex;align-items:center;gap:8px}
+    .eval-bar-bg{flex:1;height:9px;background:#0f3460;border-radius:99px;overflow:hidden}
+    .eval-bar-fill{height:100%;background:linear-gradient(90deg,#a78bfa,#60a5fa);border-radius:99px;transition:width .4s ease;width:50%}
+    #eval-label{font-size:.8rem;color:#aaa;min-width:58px;text-align:right}
+
+    /* Settings */
+    .setting-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .setting-row label{font-size:.75rem;color:#94a3b8}
+    .seg-group{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid #0f3460}
+    .seg-btn{flex:1;padding:7px 4px;background:#0f3460;border:none;color:#94a3b8;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
+    .seg-btn.active{background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff}
+    .seg-btn:hover:not(.active){background:#1e3a5f;color:#fff}
+    #btn-apply{width:100%;padding:8px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;border-radius:8px;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;transition:opacity .15s;margin-top:4px}
+    #btn-apply:hover{opacity:.85}
+
+    /* Controls */
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+    button.ctrl{padding:8px 14px;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+    button.ctrl:hover{opacity:.85}
+    button.ctrl:disabled{opacity:.4;cursor:not-allowed}
+    #btn-reset{background:#ef4444;color:#fff}
+    #btn-undo{background:#f59e0b;color:#1a1a2e}
+
+    /* Move log */
+    #move-log{max-height:180px;overflow-y:auto;font-size:.8rem;font-family:monospace;line-height:1.9;color:#ccc}
+    #move-log::-webkit-scrollbar{width:4px}
+    #move-log::-webkit-scrollbar-thumb{background:#0f3460;border-radius:2px}
+    .move-pair{display:flex;gap:8px;align-items:center}
+    .move-num{color:#60a5fa;min-width:22px}
+    .move-human{color:#a78bfa}
+    .move-engine{color:#34d399}
+    .book-badge{background:#065f46;color:#6ee7b7;padding:1px 5px;border-radius:4px;font-size:.65rem}
+
+    @media(max-width:680px){.layout{flex-direction:column;align-items:center}#board{width:340px}}
+  </style>
+</head>
+<body>
+
+<h1>♟ Chess Engine</h1>
+<div class="subtitle">
+  Minimax + Alpha-Beta &nbsp;|&nbsp;
+  {% if nn_loaded %}
+    <span class="pill pill-nn">Neural Network Eval</span>
+  {% else %}
+    <span class="pill pill-hc">Handcrafted Eval</span>
+  {% endif %}
+  &nbsp;|&nbsp; Opening Book Active <span class="pill pill-book">BOOK</span>
+</div>
+
+<div class="layout">
+  <div id="board-wrap"><div id="board"></div></div>
+
+  <div class="panel">
+
+    <!-- Status -->
+    <div class="card">
+      <h3>Status</h3>
+      <div id="status-text">Your turn (White)</div>
+      <div id="thinking"><span class="spinner"></span>Engine thinking...</div>
+      <div id="result-banner"></div>
+    </div>
+
+    <!-- Eval -->
+    <div class="card">
+      <h3>Evaluation</h3>
+      <div class="eval-wrap">
+        <span style="font-size:.75rem;color:#aaa">Black</span>
+        <div class="eval-bar-bg"><div class="eval-bar-fill" id="eval-bar"></div></div>
+        <span style="font-size:.75rem;color:#aaa">White</span>
+      </div>
+      <div style="text-align:center;margin-top:5px"><span id="eval-label">0.00</span></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+      <h3>Settings</h3>
+
+      <div class="setting-row">
+        <label>Difficulty</label>
+        <div class="seg-group" id="diff-group">
+          <button class="seg-btn" data-val="easy">Easy</button>
+          <button class="seg-btn active" data-val="medium">Medium</button>
+          <button class="seg-btn" data-val="hard">Hard</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label>Play as</label>
+        <div class="seg-group" id="color-group">
+          <button class="seg-btn active" data-val="white">White</button>
+          <button class="seg-btn" data-val="black">Black</button>
+        </div>
+      </div>
+
+      <button id="btn-apply">Apply &amp; New Game</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <h3>Controls</h3>
+      <div class="btn-row">
+        <button class="ctrl" id="btn-reset">&#8635; Reset</button>
+        <button class="ctrl" id="btn-undo">&#8630; Undo</button>
+      </div>
+    </div>
+
+    <!-- Move log -->
+    <div class="card">
+      <h3>Move History</h3>
+      <div id="move-log"><span style="color:#555">No moves yet.</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const game = new Chess();
+let board = null;
+let moveHistory = [];
+let gameOver    = false;
+let myTurn      = true;
+let playerColor = 'white';   // 'white' or 'black'
+let difficulty  = 'medium';
+
+// ── Board init ─────────────────────────────────────────────────────────
+function onDragStart(source, piece) {
+  if (gameOver || !myTurn) return false;
+  if (playerColor === 'white' && piece.startsWith('b')) return false;
+  if (playerColor === 'black' && piece.startsWith('w')) return false;
+  return true;
+}
+
+function onDrop(source, target) {
+  const move = game.move({ from: source, to: target, promotion: 'q' });
+  if (move === null) return 'snapback';
+
+  myTurn = false;
+  showThinking(true);
+  setStatus('Engine thinking...');
+
+  fetch('/api/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ move: source + target })
+  })
+  .then(r => r.json())
+  .then(data => handleMoveResponse(data, source + target))
+  .catch(err => { showThinking(false); setStatus('Error: ' + err); myTurn = true; });
+}
+
+function onSnapEnd() { board.position(game.fen()); }
+
+function handleMoveResponse(data, humanUci) {
+  showThinking(false);
+
+  if (data.error) {
+    game.undo();
+    board.position(game.fen());
+    setStatus('Illegal move — try again.');
+    myTurn = true;
+    return;
+  }
+
+  if (data.engine_move) {
+    const em = data.engine_move;
+    game.move({ from: em.slice(0,2), to: em.slice(2,4), promotion: em[4] || 'q' });
+    board.position(game.fen());
+  }
+
+  moveHistory.push({ human: humanUci, engine: data.engine_move, fromBook: data.from_book });
+  renderMoveLog();
+  updateEval(data.eval || 0);
+
+  if (data.game_over) { handleGameOver(data.result); return; }
+  setStatus(playerColor === 'white' ? 'Your turn (White)' : 'Your turn (Black)');
+  myTurn = true;
+}
+
+// ── Engine first move (when playing as Black) ──────────────────────────
+function requestEngineMove() {
+  showThinking(true);
+  setStatus('Engine thinking...');
+  fetch('/api/engine_move', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      showThinking(false);
+      if (data.engine_move) {
+        const em = data.engine_move;
+        game.move({ from: em.slice(0,2), to: em.slice(2,4), promotion: em[4] || 'q' });
+        board.position(game.fen());
+        moveHistory.push({ human: null, engine: em, fromBook: data.from_book });
+        renderMoveLog();
+        updateEval(data.eval || 0);
+      }
+      if (data.game_over) { handleGameOver(data.result); return; }
+      setStatus('Your turn (Black)');
+      myTurn = true;
+    });
+}
+
+// ── Board construction ─────────────────────────────────────────────────
+function buildBoard() {
+  if (board) board.destroy();
+  board = Chessboard('board', {
+    draggable: true,
+    position: 'start',
+    orientation: playerColor,
+    onDragStart,
+    onDrop,
+    onSnapEnd,
+    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+    moveSpeed: 'fast',
+    snapbackSpeed: 300,
+    snapSpeed: 50,
+  });
+}
+
+buildBoard();
+
+// ── UI helpers ─────────────────────────────────────────────────────────
+function setStatus(msg) { document.getElementById('status-text').textContent = msg; }
+function showThinking(v) { document.getElementById('thinking').style.display = v ? 'block' : 'none'; }
+
+function updateEval(cp) {
+  const clamped = Math.max(-1000, Math.min(1000, cp));
+  const pct = ((clamped + 1000) / 2000) * 100;
+  document.getElementById('eval-bar').style.width = pct + '%';
+  const sign = cp > 0 ? '+' : '';
+  document.getElementById('eval-label').textContent = `${sign}${(cp/100).toFixed(2)}`;
+}
+
+function handleGameOver(result) {
+  gameOver = true; myTurn = false;
+  const banner = document.getElementById('result-banner');
+  banner.style.display = 'block';
+  const wins = (playerColor === 'white' && result === '1-0') || (playerColor === 'black' && result === '0-1');
+  const loses = (playerColor === 'white' && result === '0-1') || (playerColor === 'black' && result === '1-0');
+  if (wins)       { banner.style.background = '#065f46'; banner.textContent = '🏆 You win!'; }
+  else if (loses) { banner.style.background = '#7f1d1d'; banner.textContent = '🤖 Engine wins!'; }
+  else            { banner.style.background = '#1e3a5f'; banner.textContent = '🤝 Draw!'; }
+  setStatus('Game over — ' + result);
+}
+
+function renderMoveLog() {
+  const log = document.getElementById('move-log');
+  if (!moveHistory.length) { log.innerHTML = '<span style="color:#555">No moves yet.</span>'; return; }
+  log.innerHTML = moveHistory.map((p, i) => `
+    <div class="move-pair">
+      <span class="move-num">${i+1}.</span>
+      ${p.human ? `<span class="move-human">${p.human}</span>` : '<span style="color:#555">—</span>'}
+      <span class="move-engine">${p.engine || '...'}</span>
+      ${p.fromBook ? '<span class="book-badge">book</span>' : ''}
+    </div>`).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+function fullReset() {
+  game.reset();
+  moveHistory = [];
+  gameOver = false;
+  myTurn = (playerColor === 'white');
+  renderMoveLog();
+  updateEval(0);
+  document.getElementById('result-banner').style.display = 'none';
+  setStatus(playerColor === 'white' ? 'Your turn (White)' : 'Engine goes first...');
+  if (playerColor === 'black') requestEngineMove();
+}
+
+// ── Settings ────────────────────────────────────────────────────────────
+function makeSegGroup(groupId, onSelect) {
+  document.querySelectorAll(`#${groupId} .seg-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`#${groupId} .seg-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      onSelect(btn.dataset.val);
+    });
+  });
+}
+makeSegGroup('diff-group',  v => { difficulty = v; });
+makeSegGroup('color-group', v => { playerColor = v; });
+
+document.getElementById('btn-apply').addEventListener('click', () => {
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ difficulty, color: playerColor })
+  }).then(() => {
+    buildBoard();
+    fullReset();
+  });
+});
+
+// ── Control buttons ─────────────────────────────────────────────────────
+document.getElementById('btn-reset').addEventListener('click', () => {
+  fetch('/api/reset', { method: 'POST' }).then(() => { buildBoard(); fullReset(); });
+});
+
+document.getElementById('btn-undo').addEventListener('click', () => {
+  if (!moveHistory.length) return;
+  fetch('/api/undo', { method: 'POST' }).then(r => r.json()).then(data => {
+    game.undo(); game.undo();
+    board.position(game.fen());
+    moveHistory.pop();
+    renderMoveLog();
+    gameOver = false; myTurn = true;
+    document.getElementById('result-banner').style.display = 'none';
+    setStatus(playerColor === 'white' ? 'Your turn (White)' : 'Your turn (Black)');
+    updateEval(0);
+  });
+});
+
+// ── Init ────────────────────────────────────────────────────────────────
+setStatus('Your turn (White)');
+updateEval(0);
+</script>
+</body>
+</html>
