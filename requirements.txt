@@ -1,5 +1,11 @@
+﻿# Chess engine dependencies
+
+# PyTorch CPU-only (lighter build for deployment)
+--index-url https://download.pytorch.org/whl/cpu
+torch
+
+# Core
 python-chess==1.10.0
-torch>=2.0.0
 numpy>=1.24.0
 flask>=3.0.0
 tqdm>=4.65.0
