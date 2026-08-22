@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -15,9 +15,9 @@ env/
 .venv/
 ENV/
 
-# Model weights (large files — keep locally)
-models/*.pt
+# Model weights — track best_model.pt for deployment
 models/*.pth
+!models/best_model.pt
 
 # Training data (large PGN files)
 data/*.pgn

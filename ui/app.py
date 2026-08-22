@@ -1,4 +1,4 @@
-﻿"""
+"""
 ui/app.py
 =========
 Flask web server for the chess engine.
@@ -221,7 +221,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--nn",    type=str, default="models/best_model.pt")
     parser.add_argument("--depth", type=int, default=3)
-    parser.add_argument("--port",  type=int, default=5000)
+    parser.add_argument("--port",  type=int, default=int(os.environ.get("PORT", 5000)))
     args = parser.parse_args()
 
     init_nn(args.nn)
@@ -229,4 +229,11 @@ if __name__ == "__main__":
     engine = make_engine(current_depth)
 
     print(f"\nChess Engine at http://localhost:{args.port}\n")
-    app.run(debug=False, port=args.port)
+    app.run(debug=False, host="0.0.0.0", port=args.port)
+
+# Auto-init when loaded by gunicorn
+_nn_path = os.environ.get("MODEL_PATH", "models/best_model.pt")
+_depth   = int(os.environ.get("DEPTH", 3))
+init_nn(_nn_path)
+current_depth = _depth
+engine = make_engine(current_depth)
