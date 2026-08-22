@@ -1,4 +1,4 @@
-﻿# ♟️ Chess Engine with Neural Network Evaluation
+# ♟️ Chess Engine with Neural Network Evaluation
 
 > A chess engine built from scratch in Python — combining classical **Minimax + Alpha-Beta pruning** with a **neural network evaluator** trained on grandmaster games.
 
@@ -6,14 +6,6 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-red?logo=pytorch)
 ![Flask](https://img.shields.io/badge/Flask-3.0-black?logo=flask)
 ![License](https://img.shields.io/badge/License-MIT-green)
-
----
-
-## 🎮 Demo
-
-Play in your browser — drag & drop pieces, choose difficulty, play as White or Black.
-
-![Chess Engine UI](docs/screenshot.png)
 
 ---
 
@@ -53,7 +45,7 @@ Best Move
 
 ### 1. Clone
 ```bash
-git clone https://github.com/YOUR_USERNAME/chess-engine.git
+git clone https://github.com/shwes28/chess-engine.git
 cd chess-engine
 ```
 
